@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nearby Coffee Shops & Bars (OpenStreetMap)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    #results { margin-top: 1em; }
+    .place { margin-bottom: 1em; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Nearby Coffee Shops & Bars</h1>
+  <button id="locateBtn">Find Nearby Places</button>
+  <div id="results"></div>
+
+  <script>
+    const btn = document.getElementById('locateBtn');
+    const resultsDiv = document.getElementById('results');
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      // Returns distance in meters
+      const toRad = a => a * Math.PI / 180;
+      const R = 6371e3;
+      const φ1 = toRad(lat1), φ2 = toRad(lat2);
+      const Δφ = toRad(lat2-lat1);
+      const Δλ = toRad(lon2-lon1);
+      const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    btn.onclick = function() {
+      resultsDiv.innerHTML = "Locating…";
+      if (!navigator.geolocation) {
+        resultsDiv.innerHTML = "<span class='error'>Geolocation not supported.</span>";
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true });
+    };
+
+    function error(err) {
+      resultsDiv.innerHTML = `<span class='error'>Location error: ${err.message}</span>`;
+    }
+
+    async function success(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      resultsDiv.innerHTML = "Searching for nearby coffee shops and bars…";
+
+      // Overpass QL: cafes and bars within 1000m
+      const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="cafe"](around:1000,${lat},${lon});
+          node["amenity"="bar"](around:1000,${lat},${lon});
+        );
+        out body;
+      `;
+      const url = "https://overpass-api.de/api/interpreter";
+
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          body: query,
+          headers: { "Content-Type": "text/plain" }
+        });
+        const data = await resp.json();
+
+        if (data.elements.length === 0) {
+          resultsDiv.innerHTML = "No coffee shops or bars found nearby.";
+          return;
+        }
+        let html = `<h2>Found ${data.elements.length} places:</h2>`;
+        html += "<ol>";
+        data.elements.forEach(el => {
+          const name = el.tags.name || "(Unnamed)";
+          const dist = haversine(lat, lon, el.lat, el.lon);
+          html += `<li class="place">
+            <strong>${name}</strong><br>
+            Type: ${el.tags.amenity}<br>
+            ${el.tags["addr:street"] ? el.tags["addr:street"] : ""}
+            <br>
+            <a href="https://www.openstreetmap.org/node/${el.id}" target="_blank">OpenStreetMap</a>
+            <br>
+            Distance: ${dist < 1000 ? dist.toFixed(0) + " m" : (dist/1000).toFixed(2) + " km"}
+          </li>`;
+        });
+        html += "</ol>";
+        resultsDiv.innerHTML = html;
+      } catch (e) {
+        resultsDiv.innerHTML = `<span class='error'>Error fetching data from Overpass API.</span>`;
+      }
+    }
+  </script>
+</body>
+</html>
