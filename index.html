@@ -51,12 +51,64 @@
 
       // Overpass QL: cafes and bars within 1000m
       const query = `
-        [out:json][timeout:25];
-        (
-          node["amenity"="cafe"](around:1000,${lat},${lon});
-          node["amenity"="bar"](around:1000,${lat},${lon});
-        );
-        out body;
+[out:json][timeout:25];
+node
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+  
+way
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+  
+relation
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+
+// Filter for nodes/ways/relations that explicitly mention coffee in name or cuisine/drinks
+(
+  node
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  node
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  node
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+);
+
+// Output with coordinates
+out center;
       `;
       const url = "https://overpass-api.de/api/interpreter";
 
