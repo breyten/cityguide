@@ -23,33 +23,33 @@ initTWE({ Collapse, Dropdown });
 
     // Dummy data for search results
     let searchResults = [
-      {
-        name: "Central Perk Cafe",
-        image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
-        rating: 4.7,
-        address: "123 Main St, Metropolis",
-        distance: "0.5 mi",
-        tags: ["Coffee", "Cafe"],
-        new: false
-      },
-      {
-        name: "Bean Scene",
-        image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80",
-        rating: 4.9,
-        address: "45 Park Ave, Metropolis",
-        distance: "1.2 mi",
-        tags: ["Coffee", "Brunch"],
-        new: true
-      },
-      {
-        name: "Night Owl Bar",
-        image: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80",
-        rating: 4.5,
-        address: "789 Elm St, Metropolis",
-        distance: "1.8 mi",
-        tags: ["Nightlife", "Bar"],
-        new: false
-      }
+    //   {
+    //     name: "Central Perk Cafe",
+    //     image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
+    //     rating: 4.7,
+    //     address: "123 Main St, Metropolis",
+    //     distance: "0.5 mi",
+    //     tags: ["Coffee", "Cafe"],
+    //     new: false
+    //   },
+    //   {
+    //     name: "Bean Scene",
+    //     image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80",
+    //     rating: 4.9,
+    //     address: "45 Park Ave, Metropolis",
+    //     distance: "1.2 mi",
+    //     tags: ["Coffee", "Brunch"],
+    //     new: true
+    //   },
+    //   {
+    //     name: "Night Owl Bar",
+    //     image: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80",
+    //     rating: 4.5,
+    //     address: "789 Elm St, Metropolis",
+    //     distance: "1.8 mi",
+    //     tags: ["Nightlife", "Bar"],
+    //     new: false
+    //   }
     ];
 
     // Dummy search suggestions
@@ -146,8 +146,6 @@ initTWE({ Collapse, Dropdown });
       renderResults(sorted);
     });
 
-    renderResults(searchResults);
-
     // Render My Recent Lists
     const myListsEl = document.getElementById('my-lists');
     myLists.forEach(list => {
@@ -220,3 +218,135 @@ initTWE({ Collapse, Dropdown });
       alert('You have been logged out.');
       // Redirect or change UI as needed
     });
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      // Returns distance in meters
+      const toRad = a => a * Math.PI / 180;
+      const R = 6371e3;
+      const φ1 = toRad(lat1), φ2 = toRad(lat2);
+      const Δφ = toRad(lat2-lat1);
+      const Δλ = toRad(lon2-lon1);
+      const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function error(err) {
+      //resultsDiv.innerHTML = `<span class='error'>Location error: ${err.message}</span>`;
+    }
+
+    async function success(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      console.log('Searchng for things at', lat, lon);
+      //resultsDiv.innerHTML = "Searching for nearby coffee shops and bars…";
+
+      // Overpass QL: cafes and bars within 1000m
+      const query = `
+[out:json][timeout:25];
+node
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+  
+way
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+  
+relation
+  [amenity~"^(cafe|bar)$"]
+  [name]
+  (around:1000,${lat},${lon});
+
+// Filter for nodes/ways/relations that explicitly mention coffee in name or cuisine/drinks
+(
+  node
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [name~"coffee",i]
+    (around:1000,${lat},${lon});
+  node
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [cuisine~"coffee",i]
+    (around:1000,${lat},${lon});
+  node
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+  way
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+  relation
+    [amenity~"^(cafe|bar)$"]
+    [drinks~"coffee",i]
+    (around:1000,${lat},${lon});
+);
+
+// Output with coordinates
+out center;
+      `;
+      const url = "https://overpass-api.de/api/interpreter";
+
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          body: query,
+          headers: { "Content-Type": "text/plain" }
+        });
+        const data = await resp.json();
+
+        if (data.elements.length === 0) {
+          searchResults = [];
+        } else {
+        console.log('got data:');
+          console.dir(data);
+          searchResults = data.elements.map(function (el) {
+            const name = el.tags.name || "(Unnamed)";
+            const dist = haversine(lat, lon, el.lat, el.lon);
+            return {
+                name: name,
+                image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
+                link: "https://www.openstreetmap.org/node/" + el.id,
+                rating: 0.0,
+                address: el.tags["addr:street"] ? el.tags["addr:street"] : "",
+                distance: dist,
+                tags: [], //el.tags,
+                new: false
+            };
+          });
+          console.log('search results:');
+          console.dir(searchResults);
+          renderResults(searchResults);
+        }
+      } catch (e) {
+        console.log('Error fetching data from Overpass API');
+      }
+    }
+
+    function initApp() {
+      if (!navigator.geolocation) {
+        //resultsDiv.innerHTML = "<span class='error'>Geolocation not supported.</span>";
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true });
+
+    };
+
+initApp();
