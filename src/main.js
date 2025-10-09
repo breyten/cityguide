@@ -101,23 +101,25 @@ initTWE({ Collapse, Dropdown });
         const div = document.createElement('div');
         div.className = "bg-white rounded-lg shadow hover:shadow-lg transition p-4 flex flex-col md:flex-row gap-4 cursor-pointer";
         div.innerHTML = `
-          <img src="${res.image}" class="w-full md:w-40 h-32 object-cover rounded-lg" alt="${res.name}" />
+          <!-- <img src="${res.image}" class="w-full md:w-40 h-32 object-cover rounded-lg" alt="${res.name}" /> -->
           <div class="flex-1 flex flex-col justify-between">
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-xl font-bold">${res.name}</h3>
-                ${res.new ? '<span class="ml-2 px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full">New</span>' : ''}
+              </div>
+              <div class="flex items-center gap-2">
+                ${res.opening_hours ? '<h4>'+res.opening_hours+'</h4>' : ''}
               </div>
               <div class="flex items-center mt-1 gap-2">
-                <span class="text-amber-600 font-semibold">${res.rating}★</span>
+                <!-- <span class="text-amber-600 font-semibold">${res.rating}★</span> -->
                 <span class="text-sm text-gray-500">${res.address}</span>
-                <span class="text-xs text-gray-400">(${res.distance})</span>
+                <span class="text-xs text-gray-400">(${Math.floor(res.distance)} m)</span>
               </div>
               <div class="mt-2">
                 ${res.tags.map(tag => `<span class="inline-block bg-gray-100 px-2 py-1 text-xs rounded mr-2">${tag}</span>`).join('')}
               </div>
             </div>
-            <button class="mt-4 self-start px-4 py-2 bg-amber-600 text-white font-semibold rounded hover:bg-amber-700 transition">Save</button>
+            <!-- <button class="mt-4 self-start px-4 py-2 bg-amber-600 text-white font-semibold rounded hover:bg-amber-700 transition">Save</button> -->
           </div>
         `;
         div.addEventListener('click', e => {
@@ -320,14 +322,17 @@ out center;
           searchResults = data.elements.map(function (el) {
             const name = el.tags.name || "(Unnamed)";
             const dist = haversine(lat, lon, el.lat, el.lon);
+            const street = el.tags["addr:street"] ? el.tags["addr:street"] : "";
+            const housenumber = el.tags["addr:housenumber"] ? el.tags["addr:housenumber"] : ""
             return {
                 name: name,
                 image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
                 link: "https://www.openstreetmap.org/node/" + el.id,
+                opening_hours: el.tags["opening_hours"] ? el.tags["opening_hours"] : "",
                 rating: 0.0,
-                address: el.tags["addr:street"] ? el.tags["addr:street"] : "",
+                address: street + " " + housenumber,
                 distance: dist,
-                tags: [], //el.tags,
+                tags: el.tags["amenity"] ? [el.tags["amenity"]] : [],
                 new: false
             };
           });
